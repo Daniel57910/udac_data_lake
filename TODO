@@ -1,1 +1,6 @@
-basic UML of requirements
+basic UML of code
+create alias for virtualenv load
+install dependencies to virtualenv that are required
+complete basic local version
+review implementation on EMR/lambda cluster
+
