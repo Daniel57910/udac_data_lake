@@ -4,7 +4,7 @@ import multiprocessing
 import subprocess
 import re
 from joblib import Parallel, delayed
-# from lib.file_finder import FileFinder
+from lib.file_finder import FileFinder
 # from lib.data_loader import DataLoader
 import os
 import pdb
@@ -35,21 +35,33 @@ def main():
 
   song_staging_schema = StructType(
     [
-      StructField('artist_id', StringType(), False), \
-      StructField('artist_latitude', StringType(), True)
+      StructField('artist_id',        StringType(),  False), 
+      StructField('artist_latitude',  FloatType(),   True),  
+      StructField('artist_location',  StringType(),  True),  
+      StructField('artist_longitude', FloatType(),   True),  
+      StructField('artist_name',      StringType(),  False), 
+      StructField('duration',         FloatType(),   True),  
+      StructField('num_songs',        IntegerType(), True),  
+      StructField('song_id',          StringType(),   False), 
+      StructField('title',            StringType(),  False), 
+      StructField('year',             IntegerType(), True)
     ]
   )
-  print(song_staging_schema)
+
+  file_finder = FileFinder(os.getcwd() + '/tmp/song_data/', '*.json')
+  file_name = file_finder.return_file_names()[0]
+  print(file_name)
 
   log_data = spark.read.json(
-    path=os.getcwd() + '/sample.json', 
+    path=os.getcwd() + '/tmp/song_data/', 
     multiLine=True, 
     schema=song_staging_schema
   )
 
   print(log_data.collect())
 
-  # log_data = spark.read.json(os.getcwd() + '/tmp/log_data/*', multiLine=True)
+
+
 
 
 
