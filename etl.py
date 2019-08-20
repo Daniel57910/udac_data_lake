@@ -12,6 +12,7 @@ import csv
 from datetime import datetime
 import pandas as pd
 from pyspark.sql import SparkSession
+from pyspark.sql.types import *
 
 def extract_files_from_s3(directories):
     with Pool(processes=multiprocessing.cpu_count()) as pool:
@@ -31,7 +32,24 @@ def main():
   # extract_files_from_s3(directories)
 
   spark = SparkSession.builder.getOrCreate()
-  log_data = spark.read.json(os.getcwd() + '/tmp/log_data/*', multiLine=True)
+
+  song_staging_schema = StructType(
+    [
+      StructField('artist_id', StringType(), False), \
+      StructField('artist_latitude', StringType(), True)
+    ]
+  )
+  print(song_staging_schema)
+
+  log_data = spark.read.json(
+    path=os.getcwd() + '/sample.json', 
+    multiLine=True, 
+    schema=song_staging_schema
+  )
+
+  print(log_data.collect())
+
+  # log_data = spark.read.json(os.getcwd() + '/tmp/log_data/*', multiLine=True)
 
 
 

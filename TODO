@@ -1,6 +1,4 @@
-basic UML of code
-create alias for virtualenv load
-install dependencies to virtualenv that are required
+read log data into spark rdd
 complete basic local version
 review implementation on EMR/lambda cluster
 
