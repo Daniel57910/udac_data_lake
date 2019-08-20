@@ -49,11 +49,10 @@ def main():
   )
 
   file_finder = FileFinder(os.getcwd() + '/tmp/song_data/', '*.json')
-  file_name = file_finder.return_file_names()[0]
-  print(file_name)
+  file_names = file_finder.return_file_names()
 
   log_data = spark.read.json(
-    path=os.getcwd() + '/tmp/song_data/', 
+    file_names,
     multiLine=True, 
     schema=song_staging_schema
   )
