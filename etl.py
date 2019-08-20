@@ -11,6 +11,11 @@ import pdb
 import csv
 from datetime import datetime
 import pandas as pd
+from pyspark.sql import SparkSession
+
+def extract_files_from_s3(directories):
+    with Pool(processes=multiprocessing.cpu_count()) as pool:
+      pool.map(fetch_files_from_s3, directories)
 
 def fetch_files_from_s3(suffix):
   '''
@@ -23,8 +28,15 @@ def fetch_files_from_s3(suffix):
 def main():
 
   directories = ['log_data', 'song_data']
-  with Pool(processes=multiprocessing.cpu_count()) as pool:
-    pool.map(fetch_files_from_s3, directories)
+  # extract_files_from_s3(directories)
+
+  spark = SparkSession.builder.getOrCreate()
+  log_data = spark.read.json(os.getcwd() + '/tmp/log_data/*', multiLine=True)
+
+
+
+
+  
 
 if __name__ == "__main__":
   main()
