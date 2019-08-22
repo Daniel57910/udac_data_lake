@@ -5,14 +5,12 @@ import subprocess
 import re
 from joblib import Parallel, delayed
 from lib.file_finder import FileFinder
-# from lib.data_loader import DataLoader
+from lib.rdd_creator import RDDCreator
 import os
 import pdb
 import csv
 from datetime import datetime
 import pandas as pd
-from pyspark.sql import SparkSession
-from pyspark.sql.types import *
 
 def extract_files_from_s3(directories):
     with Pool(processes=multiprocessing.cpu_count()) as pool:
@@ -26,32 +24,29 @@ def fetch_files_from_s3(suffix):
   local_path = os.getcwd() + '/tmp' + f'/{suffix}'
   subprocess.run(f'aws s3 sync s3://udacity-dend/{suffix} {local_path}', shell=True, check=True)
 
+
+def return_file_names(directory):
+  file_finder = FileFinder(os.getcwd() + f'/tmp/{directory}/', '*.json')
+  return list(file_finder.return_file_names())
+
 def main():
 
   directories = ['log_data', 'song_data']
+  dataframes = {}
   # extract_files_from_s3(directories)
 
-  spark = SparkSession.builder.getOrCreate()
-  song_file_finder = FileFinder(os.getcwd() + '/tmp/song_data/', '*.json')
-  song_file_names = song_file_finder.return_file_names()
+  frames = map(lambda dir: RDDCreator(dir, return_file_names(dir)), directories)
 
-  log_file_finder = FileFinder(os.getcwd() + '/tmp/log_data/', '*.json')
-  log_file_names = log_file_finder.return_file_names()
-
-  # song_file_data = spark.read.json(
-  #   file_names,
-  #   multiLine=True, 
-  #   schema=song_staging_schema
-  # )
-
-  log_file_data = spark.read.json(
-    path=log_file_names[0],
-    multiLine=True
+  frames = map(
+    lambda frame: frame.create_rdd_from_path(), frames
   )
 
-  print(log_file_data.schema)
+  for f in frames:
+    print(f)
 
-  # print(song_file_data.collect())
+
+
+  
 
 
 
