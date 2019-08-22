@@ -32,32 +32,26 @@ def main():
   # extract_files_from_s3(directories)
 
   spark = SparkSession.builder.getOrCreate()
+  song_file_finder = FileFinder(os.getcwd() + '/tmp/song_data/', '*.json')
+  song_file_names = song_file_finder.return_file_names()
 
-  song_staging_schema = StructType(
-    [
-      StructField('artist_id',        StringType(),  False), 
-      StructField('artist_latitude',  FloatType(),   True),  
-      StructField('artist_location',  StringType(),  True),  
-      StructField('artist_longitude', FloatType(),   True),  
-      StructField('artist_name',      StringType(),  False), 
-      StructField('duration',         FloatType(),   True),  
-      StructField('num_songs',        IntegerType(), True),  
-      StructField('song_id',          StringType(),   False), 
-      StructField('title',            StringType(),  False), 
-      StructField('year',             IntegerType(), True)
-    ]
+  log_file_finder = FileFinder(os.getcwd() + '/tmp/log_data/', '*.json')
+  log_file_names = log_file_finder.return_file_names()
+
+  # song_file_data = spark.read.json(
+  #   file_names,
+  #   multiLine=True, 
+  #   schema=song_staging_schema
+  # )
+
+  log_file_data = spark.read.json(
+    path=log_file_names[0],
+    multiLine=True
   )
 
-  file_finder = FileFinder(os.getcwd() + '/tmp/song_data/', '*.json')
-  file_names = file_finder.return_file_names()
+  print(log_file_data.schema)
 
-  log_data = spark.read.json(
-    file_names,
-    multiLine=True, 
-    schema=song_staging_schema
-  )
-
-  print(log_data.collect())
+  # print(song_file_data.collect())
 
 
 
