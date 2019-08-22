@@ -2,15 +2,10 @@
 from multiprocessing import Pool
 import multiprocessing
 import subprocess
-import re
-from joblib import Parallel, delayed
 from lib.file_finder import FileFinder
 from lib.rdd_creator import RDDCreator
 import os
-import pdb
-import csv
-from datetime import datetime
-import pandas as pd
+from lib.schema import song_schema
 
 def extract_files_from_s3(directories):
     with Pool(processes=multiprocessing.cpu_count()) as pool:
@@ -29,9 +24,15 @@ def return_file_names(directory):
   file_finder = FileFinder(os.getcwd() + f'/tmp/{directory}/', '*.json')
   return list(file_finder.return_file_names())
 
+def create_schema_heirachy_from_data(name, schema):
+  directory = {}
+  directory[name] = list(schema.keys())
+  return directory
+
+
 def main():
 
-  directories = ['log_data', 'song_data']
+  directories = ['song_data']
   dataframes = {}
   # extract_files_from_s3(directories)
 
@@ -41,8 +42,11 @@ def main():
     lambda frame: frame.create_rdd_from_path(), frames
   )
 
-  for f in frames:
-    print(f)
+  song_rdd_sets = create_schema_heirachy_from_data('song_data', song_schema)
+  print(song_rdd_sets)
+
+  
+
 
 
 
