@@ -33,6 +33,8 @@ def main():
     .getOrCreate()\
 
   spark.sparkContext.setLogLevel("ERROR")
+
+  artist_schema = ['artist_id']
   
   directories = ['log_data', 'song_data']
   dataframes = {}
@@ -45,8 +47,10 @@ def main():
   )
 
   song_frame = list(frames)[1]
-
-  song_frame.write.csv(os.getcwd() + '/sample_song_frame.csv')
+  
+  artists = song_frame.select([col for col in artist_schema])
+  
+  print(artists.show())
   
   print('exiting application')
   spark.stop()
