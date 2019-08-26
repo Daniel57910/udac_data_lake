@@ -6,6 +6,8 @@ from lib.file_finder import FileFinder
 from lib.rdd_creator import RDDCreator
 import os
 from lib.schema import song_schema
+from pyspark.sql import SparkSession
+
 
 def extract_files_from_s3(directories):
     with Pool(processes=multiprocessing.cpu_count()) as pool:
@@ -21,31 +23,53 @@ def fetch_files_from_s3(suffix):
 
 
 def return_file_names(directory):
-  file_finder = FileFinder(os.getcwd() + f'/tmp/{directory}/', '*.json')
+  file_finder = FileFinder(os.getcwd() + f'/tmp/{directory}', '.json')
+  print(list(file_finder.return_file_names()))
   return list(file_finder.return_file_names())
 
 def create_schema_heirachy_from_data(name, schema):
   directory = {}
   directory[name] = list(schema.keys())
   return directory
+  
 
 
 def main():
+
+  spark = SparkSession\
+    .builder\
+    .appName("dev_app")\
+    .getOrCreate()\
+
+  print('Building spark session at')
+
+  spark.sparkContext.setLogLevel("DEBUG")
+  print(spark)
 
   directories = ['song_data']
   dataframes = {}
   # extract_files_from_s3(directories)
 
-  frames = map(lambda dir: RDDCreator(dir, return_file_names(dir)), directories)
+  song_directory = return_file_names('song_data')
+  print('\n'.join(song_directory))
+  # frames = map(lambda dir: RDDCreator(dir, return_file_names(dir), spark), directories)
 
-  frames = map(
-    lambda frame: frame.create_rdd_from_path(), frames
-  )
+  # frames = map(
+  #   lambda frame: frame.create_rdd_from_path(), frames
+  # )
 
-  song_rdd_sets = create_schema_heirachy_from_data('song_data', song_schema)
-  print(song_rdd_sets)
+  # song_data = list(frames)[0]
+  # print(song_data[0])
 
-  
+  # song_data = song_data.select(['artist_id'])
+  # print(song_data.show())
+  # song_data.write.csv(os.getcwd() + '/example.csv')
+  # print('FILE WROTE TO CSV')
+
+  spark.stop()
+
+
+ 
 
 
 
