@@ -5,6 +5,7 @@ import subprocess
 import re
 from lib.rdd_creator import RDDCreator
 from lib.file_finder import FileFinder
+from lib.schema import song_schema
 from pyspark.sql import SparkSession
 import os
 
@@ -34,7 +35,8 @@ def main():
 
   spark.sparkContext.setLogLevel("ERROR")
 
-  artist_schema = ['artist_id']
+  artist_schema = ['artist_id', 'artist_name', 'artist_latitude', 'artist_longitude', 'artist_location']
+  song_schema = ['song_id',  'title', 'artist_id', 'year', 'duration']
   
   directories = ['log_data', 'song_data']
   dataframes = {}
@@ -48,11 +50,11 @@ def main():
 
   song_frame = list(frames)[1]
   
-  artists = song_frame.select([col for col in artist_schema])
-  
-  print(artists.show())
-  
-  print('exiting application')
+  artist_subset = song_frame.select([col for col in artist_schema])
+  song_subset = song_frame.select([col for col in song_schema])
+  artist_subset = artist_subset.dropna().dropDuplicates()
+  song_subset = song_subset.dropna().dropDuplicates()
+
   spark.stop()
 
 
