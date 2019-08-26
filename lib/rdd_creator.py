@@ -1,0 +1,28 @@
+
+class RDDCreator():
+  
+  def __init__(self, name, file_names, spark):
+    self.name = name
+    self.file_names = file_names
+    self.spark = spark
+    self.schema = self._read_schema_from_file()
+    self.RDD = None
+
+  def create_rdd_from_path(self):
+    self.RDD = self.spark.read.json(
+      self.file_names,
+      multiLine=True,
+      schema=self.schema
+    )
+
+    return self.RDD
+
+  def _read_schema_from_file(self):
+    return self.spark.read.json(
+      path=self.file_names[0],
+      multiLine=True
+    ).schema
+
+
+
+
