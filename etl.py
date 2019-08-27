@@ -8,6 +8,7 @@ from lib.file_finder import FileFinder
 from lib.schema import song_schema
 from pyspark.sql import SparkSession
 import os
+from datetime import datetime
 
 def extract_files_from_s3(directories):
     with Pool(processes=multiprocessing.cpu_count()) as pool:
@@ -21,10 +22,23 @@ def fetch_files_from_s3(suffix):
   local_path = os.getcwd() + '/tmp/{}'.format(suffix)
   subprocess.run('aws s3 sync s3://udacity-dend/{} {}'.format(suffix, local_path), shell=True, check=True)
 
-
 def return_file_names(directory):
   file_finder = FileFinder(os.getcwd() + '/tmp/{}/'.format(directory), '*.json')
   return list(file_finder.return_file_names())
+
+def unpack_timestamp(row):
+  '''
+  receives a timestamp and returns a list of time variables that match the d_timestamp table
+  the timestamp is appended to the list as this is used to join d_timestamp on f_songplay
+  example:
+  row entered = 1541903636796
+  returned = [2018, 11, 11, 33, 56, 2, True, 1541903636796]
+  '''
+ 
+  new_row = list(datetime.fromtimestamp(row // 1000).timetuple()[0: 7])
+  new_row[-1] = new_row[-1] > 5
+  new_row.append(row)
+  return new_row
 
 def main():
 
@@ -55,6 +69,19 @@ def main():
   artist_subset = artist_subset.dropna().dropDuplicates()
   song_subset = song_subset.dropna().dropDuplicates()
 
+  timestamp_subset = log_frame.select(['ts']).dropna()
+
+  timestamp_data = [int(row.ts) for row in timestamp_subset.collect()]
+  timestamp_frame = spark.createDataFrame(
+    list(
+      map(
+        unpack_timestamp, timestamp_data
+      )
+    ),
+    schema = ['year', 'month', 'day', 'minute', 'second', 'hour', 'weekday', 'ts']
+  )
+
+  print(timestamp_frame.show())
   spark.stop()
 
 
