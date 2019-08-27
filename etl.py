@@ -48,7 +48,7 @@ def main():
     lambda frame: frame.create_rdd_from_path(), frames
   )
 
-  song_frame = list(frames)[1]
+  log_frame, song_frame = list(frames)
   
   artist_subset = song_frame.select([col for col in artist_schema])
   song_subset = song_frame.select([col for col in song_schema])
