@@ -1,4 +1,7 @@
-
+'''
+class to generate a schema from one file
+create_rdd_from_path returns a spark RDD with that schema
+'''
 class RDDCreator():
   
   def __init__(self, name, file_names, spark):

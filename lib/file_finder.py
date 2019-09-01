@@ -1,5 +1,4 @@
 import glob
-
 '''
 file finder class
 recursively searches directory for all files that match file type

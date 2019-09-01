@@ -1,3 +1,4 @@
+'''define rows for each rdd structure'''
 schema = {}
 
 schema['artist_schema']         = ['artist_id', 'artist_name', 'artist_latitude', 'artist_longitude', 'artist_location']
