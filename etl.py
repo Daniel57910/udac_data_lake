@@ -93,6 +93,7 @@ def main():
   spark.sparkContext.setLogLevel("ERROR")
 
   directories = ['log_data', 'song_data']
+  
   extract_files_from_s3(directories)
 
   frames = map(lambda dir: RDDCreator(dir, return_file_names(dir), spark), directories)
