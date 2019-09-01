@@ -40,6 +40,15 @@ def unpack_timestamp(row):
   new_row.append(row)
   return new_row
 
+def apply_transformation_to_dataframe(spark, data, schema, func):
+
+  return spark.createDataFrame(
+    list(map(
+      func, data)
+    ),
+    schema = schema
+  )
+
 def main():
 
   spark = SparkSession\
@@ -50,8 +59,11 @@ def main():
   spark.sparkContext.setLogLevel("ERROR")
 
   artist_schema = ['artist_id', 'artist_name', 'artist_latitude', 'artist_longitude', 'artist_location']
-  song_schema = ['song_id',  'title', 'artist_id', 'year', 'duration']
-  
+  song_schema = ['song_id',  'title', 'year', 'duration', 'artist_id']
+  timestamp_schema = ['year', 'month', 'day', 'minute', 'second', 'hour', 'weekday', 'ts']
+  app_user_schema = ['firstName', 'gender', 'lastName', 'level', 'location', 'userId', 'ts']
+  songplay_schema = ['ts', 'userId', 'level', 'artist', 'song', 'sessionId', 'location', 'userAgent']
+
   directories = ['log_data', 'song_data']
   dataframes = {}
   # extract_files_from_s3(directories)
@@ -72,32 +84,37 @@ def main():
   timestamp_subset = log_frame.select(['ts']).dropna()
 
   timestamp_data = [int(row.ts) for row in timestamp_subset.collect()]
-  timestamp_frame = spark.createDataFrame(
-    list(
-      map(
-        unpack_timestamp, timestamp_data
-      )
-    ),
-    schema = ['year', 'month', 'day', 'minute', 'second', 'hour', 'weekday', 'ts']
+
+  timestamp_subset = apply_transformation_to_dataframe(
+    spark, timestamp_data, timestamp_schema, unpack_timestamp
   )
 
-  print(timestamp_frame.show())
+  app_user_subset = log_frame.select([col for col in app_user_schema])
+
+  #may be better to sort files with file_finder to ensure loaded in correct order
+  app_user_subset = app_user_subset.dropna().orderBy('ts').dropDuplicates()
+
+  songplay_subset = log_frame.select([col for col in songplay_schema])
+  artist_and_song_subset = artist_subset.join(
+    song_subset, artist_subset.artist_id == song_subset.artist_id).drop(song_subset.artist_id).select(
+    [col for col in ['artist_id', 'song_id', 'artist_name', 'title']]
+  )
+  
+  songplay_subset = songplay_subset.join(
+    artist_and_song_subset, 
+    [songplay_subset.artist == artist_and_song_subset.artist_name, songplay_subset.song == artist_and_song_subset.title], 
+    how='left'
+  ).select([col for col in songplay_schema + ['artist_id', 'song_id']])
+
+  print(songplay_subset.show())
+
+
+
+
+
+
+
   spark.stop()
-
-
-
-
-
-
-  
-
-
-
-
-
-
-
-  
 
 if __name__ == "__main__":
   main()

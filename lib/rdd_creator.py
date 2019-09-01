@@ -9,13 +9,11 @@ class RDDCreator():
     self.RDD = None
 
   def create_rdd_from_path(self):
-    self.RDD = self.spark.read.json(
+    return self.spark.read.json(
       self.file_names,
       multiLine=True,
       schema=self.schema
     )
-
-    return self.RDD
 
   def _read_schema_from_file(self):
     return self.spark.read.json(
