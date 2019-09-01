@@ -5,7 +5,7 @@ import subprocess
 import re
 from lib.rdd_creator import RDDCreator
 from lib.file_finder import FileFinder
-from lib.schema import song_schema
+from lib.schema import schema
 from pyspark.sql import SparkSession
 import os
 from datetime import datetime
@@ -25,6 +25,9 @@ def fetch_files_from_s3(suffix):
 def return_file_names(directory):
   file_finder = FileFinder(os.getcwd() + '/tmp/{}/'.format(directory), '*.json')
   return list(file_finder.return_file_names())
+
+def make_parquet_file_directory(parquet_path):
+  if not os.path.exists(parquet_path): os.makedirs(parquet_path)
 
 def unpack_timestamp(row):
   '''
@@ -49,71 +52,77 @@ def apply_transformation_to_dataframe(spark, data, schema, func):
     schema = schema
   )
 
+def create_rdd_from_files(frames):
+  return list(map(
+    lambda frame: frame.create_rdd_from_path(), frames
+  ))
+
 def main():
+
+  parquet_file_path = os.getcwd() + '/parquet_files'
+  make_parquet_file_directory(parquet_file_path)
 
   spark = SparkSession\
     .builder\
-    .appName("dev_app")\
+    .appName("sparkify_etl")\
     .getOrCreate()\
 
   spark.sparkContext.setLogLevel("ERROR")
 
-  artist_schema = ['artist_id', 'artist_name', 'artist_latitude', 'artist_longitude', 'artist_location']
-  song_schema = ['song_id',  'title', 'year', 'duration', 'artist_id']
-  timestamp_schema = ['year', 'month', 'day', 'minute', 'second', 'hour', 'weekday', 'ts']
-  app_user_schema = ['firstName', 'gender', 'lastName', 'level', 'location', 'userId', 'ts']
-  songplay_schema = ['ts', 'userId', 'level', 'artist', 'song', 'sessionId', 'location', 'userAgent']
-
   directories = ['log_data', 'song_data']
-  dataframes = {}
   # extract_files_from_s3(directories)
 
   frames = map(lambda dir: RDDCreator(dir, return_file_names(dir), spark), directories)
 
-  frames = map(
-    lambda frame: frame.create_rdd_from_path(), frames
-  )
-
-  log_frame, song_frame = list(frames)
+  log_frame, song_frame = create_rdd_from_files(frames)
   
-  artist_subset = song_frame.select([col for col in artist_schema])
-  song_subset = song_frame.select([col for col in song_schema])
-  artist_subset = artist_subset.dropna().dropDuplicates()
-  song_subset = song_subset.dropna().dropDuplicates()
+  artist_subset = song_frame.select([col for col in schema['artist_schema']]).dropna().dropDuplicates()
+  song_subset = song_frame.select([col for col in schema['song_schema']]).dropna().dropDuplicates()
 
   timestamp_subset = log_frame.select(['ts']).dropna()
 
   timestamp_data = [int(row.ts) for row in timestamp_subset.collect()]
 
   timestamp_subset = apply_transformation_to_dataframe(
-    spark, timestamp_data, timestamp_schema, unpack_timestamp
+    spark, timestamp_data, schema['timestamp_schema'], unpack_timestamp
   )
 
-  app_user_subset = log_frame.select([col for col in app_user_schema])
+  app_user_subset = log_frame.select([col for col in schema['app_user_schema']]).dropna().orderBy('ts').dropDuplicates()
 
-  #may be better to sort files with file_finder to ensure loaded in correct order
-  app_user_subset = app_user_subset.dropna().orderBy('ts').dropDuplicates()
+  songplay_subset = log_frame.select([col for col in schema['songplay_schema']])
 
-  songplay_subset = log_frame.select([col for col in songplay_schema])
   artist_and_song_subset = artist_subset.join(
     song_subset, artist_subset.artist_id == song_subset.artist_id).drop(song_subset.artist_id).select(
-    [col for col in ['artist_id', 'song_id', 'artist_name', 'title']]
+    [col for col in schema['artist_and_song_join']]
   )
   
   songplay_subset = songplay_subset.join(
     artist_and_song_subset, 
     [songplay_subset.artist == artist_and_song_subset.artist_name, songplay_subset.song == artist_and_song_subset.title], 
     how='left'
-  ).select([col for col in songplay_schema + ['artist_id', 'song_id']])
+  ).select([col for col in schema['songplay_schema'] + ['artist_id', 'song_id']])
 
-  print(songplay_subset.show())
+  frames_to_disk = [
+    artist_subset, 
+    song_subset,
+    timestamp_subset,
+    app_user_subset,
+    songplay_subset
+  ]
 
+  parquet_file_names = [
+    'd_artist',
+    'd_song',
+    'd_timestamp',
+    'd_app_user',
+    'f_songplay'
+  ]
 
+  parquet_files = dict(zip(parquet_file_names, frames_to_disk))
 
-
-
-
-
+  for file in parquet_files:
+    parquet_files[file].write.parquet(parquet_file_path + '/{}'.format(file))
+    
   spark.stop()
 
 if __name__ == "__main__":

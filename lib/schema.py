@@ -1,13 +1,10 @@
-from pyspark.sql.types import *
+schema = {}
 
-song_schema = {}
+schema['artist_schema']         = ['artist_id', 'artist_name', 'artist_latitude', 'artist_longitude', 'artist_location']
+schema['song_schema']           = ['song_id',  'title', 'year', 'duration', 'artist_id']
+schema['timestamp_schema']      = ['year', 'month', 'day', 'minute', 'second', 'hour', 'weekday', 'ts']
+schema['app_user_schema']       = ['firstName', 'gender', 'lastName', 'level', 'location', 'userId', 'ts']
+schema['artist_and_song_join']  = ['artist_id', 'song_id', 'artist_name', 'title']
+schema['songplay_schema']       = ['ts', 'userId', 'level', 'artist', 'song', 'sessionId', 'location', 'userAgent']
 
-song_schema['artist_rdd'] = StructType([
-    StructField('artist_id',        StringType(), False),
-    StructField('artist_name',      StringType(), False),
-    StructField('artist_latitude',  DoubleType(), True),
-    StructField('artist_longitude', DoubleType(), True),
-    StructField('artist_location',  StringType(), True)
-  ]
-)
 
