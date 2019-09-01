@@ -161,7 +161,7 @@ def main():
       'aws s3 sync {} s3://sparkify-load/'.format(parquet_file_path), shell=True, check=True
     )
   except Exception as e:
-    raise Exception('Unable to sync directories to s3'.format(e))
+    raise Exception('Unable to sync directories to s3: {}'.format(e))
 
   spark.stop()
 
