@@ -7,7 +7,6 @@ from lib.rdd_creator import RDDCreator
 from lib.file_finder import FileFinder
 from lib.schema import schema
 from pyspark.sql import SparkSession
-from joblib import Parallel, delayed
 import os
 from datetime import datetime
 
@@ -100,10 +99,10 @@ def main():
 
   log_frame, song_frame = create_rdd_from_files(frames)
   
-  artist_subset = song_frame.select([col for col in schema['artist_schema']]).dropna().dropDuplicates()
-  song_subset = song_frame.select([col for col in schema['song_schema']]).dropna().dropDuplicates()
+  artist_subset = song_frame.select([col for col in schema['artist_schema']]).dropna().dropDuplicates(['artist_id'])
+  song_subset = song_frame.select([col for col in schema['song_schema']]).dropna().dropDuplicates(['song_id'])
 
-  timestamp_subset = log_frame.select(['ts']).dropna()
+  timestamp_subset = log_frame.select(['ts']).dropna().dropDuplicates(['ts'])
 
   '''required as only want the data and not columns to transform timestamp into required time data'''
   timestamp_data = [int(row.ts) for row in timestamp_subset.collect()]
@@ -113,7 +112,7 @@ def main():
   )
 
   '''order by ts and last occuring entry selected as will contain most accurate user data'''
-  app_user_subset = log_frame.select([col for col in schema['app_user_schema']]).dropna().orderBy('ts').dropDuplicates()
+  app_user_subset = log_frame.select([col for col in schema['app_user_schema']]).dropna().orderBy('ts').dropDuplicates(['userId'])
 
   songplay_subset = log_frame.select([col for col in schema['songplay_schema']])
 
@@ -130,30 +129,11 @@ def main():
     how='left'
   ).select([col for col in schema['songplay_schema'] + ['artist_id', 'song_id']])
 
-  '''create pointers to all datasets, and zip them with the name of the parquet file'''
-  frames_to_disk = [
-    artist_subset, 
-    song_subset,
-    timestamp_subset,
-    app_user_subset,
-    songplay_subset
-  ]
-
-  parquet_file_names = [
-    parquet_file_path + '/' + 'd_artist',
-    parquet_file_path + '/' + 'd_song',
-    parquet_file_path + '/' + 'd_timestamp',
-    parquet_file_path + '/' + 'd_app_user',
-    parquet_file_path + '/' + 'f_songplay'
-  ]
-
-  parquet_files = dict(zip(parquet_file_names, frames_to_disk))
-
-  '''write datasets to disk as parquet files'''
-  any(map(
-    lambda file: 
-    parquet_files[file].write.parquet(file), parquet_files.keys()
-  ))
+  artist_subset.write.mode('overwrite').parquet(parquet_file_path + '/d_artist')
+  song_subset.write.mode('overwrite').partitionBy('year', 'artist_id').parquet(parquet_file_path + '/d_song')
+  timestamp_subset.write.mode('overwrite').partitionBy('year', 'month').parquet(parquet_file_path + '/d_timestamp')
+  app_user_subset.write.mode('overwrite').parquet(parquet_file_path + '/d_app_user')
+  songplay_subset.write.mode('overwrite').parquet(parquet_file_path + '/f_songplay')
 
   '''sync tables directory to s3'''
   try:
