@@ -99,8 +99,8 @@ def main():
 
   log_frame, song_frame = create_rdd_from_files(frames)
   
-  artist_subset = song_frame.select([col for col in schema['artist_schema']]).dropna().dropDuplicates(['artist_id'])
-  song_subset = song_frame.select([col for col in schema['song_schema']]).dropna().dropDuplicates(['song_id'])
+  artist_subset = song_frame.select(schema['artist_schema']).dropna().dropDuplicates(['artist_id'])
+  song_subset = song_frame.select(schema['song_schema']).dropna().dropDuplicates(['song_id'])
 
   timestamp_subset = log_frame.select(['ts']).dropna().dropDuplicates(['ts'])
 
@@ -112,36 +112,45 @@ def main():
   )
 
   '''order by ts and last occuring entry selected as will contain most accurate user data'''
-  app_user_subset = log_frame.select([col for col in schema['app_user_schema']]).dropna().orderBy('ts').dropDuplicates(['userId'])
+  app_user_subset = log_frame.select(schema['app_user_schema']).dropna().orderBy('ts').dropDuplicates(['userId'])
 
-  songplay_subset = log_frame.select([col for col in schema['songplay_schema']])
+  songplay_subset = log_frame.select(schema['songplay_schema'])
+  
+  songplay_subset = songplay_subset.filter(songplay_subset.page == 'NextSong')
 
   '''join artist and song data to identify artists and songs as a one to many relationship'''
   artist_and_song_subset = artist_subset.join(
     song_subset, artist_subset.artist_id == song_subset.artist_id).drop(song_subset.artist_id).select(
-    [col for col in schema['artist_and_song_join']]
+    schema['artist_and_song_join']
   )
-  
+
   '''select all songplay data and left join artist and song dimensions where possible'''
   songplay_subset = songplay_subset.join(
     artist_and_song_subset, 
     [songplay_subset.artist == artist_and_song_subset.artist_name, songplay_subset.song == artist_and_song_subset.title], 
     how='left'
-  ).select([col for col in schema['songplay_schema'] + ['artist_id', 'song_id']])
+  ).select(schema['songplay_schema'] + ['artist_id', 'song_id'])
+
+  songplay_subset = songplay_subset.join(
+    timestamp_subset,
+    songplay_subset.ts == timestamp_subset.ts
+  ).drop(timestamp_subset.ts).select(
+    schema['songplay_schema'] + ['artist_id', 'song_id', 'month', 'year']
+  )
 
   artist_subset.write.mode('overwrite').parquet(parquet_file_path + '/d_artist')
   song_subset.write.mode('overwrite').partitionBy('year', 'artist_id').parquet(parquet_file_path + '/d_song')
   timestamp_subset.write.mode('overwrite').partitionBy('year', 'month').parquet(parquet_file_path + '/d_timestamp')
   app_user_subset.write.mode('overwrite').parquet(parquet_file_path + '/d_app_user')
-  songplay_subset.write.mode('overwrite').parquet(parquet_file_path + '/f_songplay')
+  songplay_subset.write.mode('overwrite').partitionBy('year', 'month').parquet(parquet_file_path + '/f_songplay')
 
   '''sync tables directory to s3'''
-  try:
-    subprocess.run(
-      'aws s3 sync {} s3://sparkify-load/'.format(parquet_file_path), shell=True, check=True
-    )
-  except Exception as e:
-    raise Exception('Unable to sync directories to s3: {}'.format(e))
+  # try:
+  #   subprocess.run(
+  #     'aws s3 sync {} s3://sparkify-load/'.format(parquet_file_path), shell=True, check=True
+  #   )
+  # except Exception as e:
+  #   raise Exception('Unable to sync directories to s3: {}'.format(e))
 
   spark.stop()
 

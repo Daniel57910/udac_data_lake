@@ -6,6 +6,6 @@ schema['song_schema']           = ['song_id',  'title', 'year', 'duration', 'art
 schema['timestamp_schema']      = ['year', 'month', 'day', 'minute', 'second', 'hour', 'weekday', 'ts']
 schema['app_user_schema']       = ['firstName', 'gender', 'lastName', 'level', 'location', 'userId', 'ts']
 schema['artist_and_song_join']  = ['artist_id', 'song_id', 'artist_name', 'title']
-schema['songplay_schema']       = ['ts', 'userId', 'level', 'artist', 'song', 'sessionId', 'location', 'userAgent']
+schema['songplay_schema']       = ['ts', 'userId', 'level', 'artist', 'song', 'sessionId', 'location', 'userAgent', 'page']
 
 
