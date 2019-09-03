@@ -145,12 +145,12 @@ def main():
   songplay_subset.write.mode('overwrite').partitionBy('year', 'month').parquet(parquet_file_path + '/f_songplay')
 
   '''sync tables directory to s3'''
-  # try:
-  #   subprocess.run(
-  #     'aws s3 sync {} s3://sparkify-load/'.format(parquet_file_path), shell=True, check=True
-  #   )
-  # except Exception as e:
-  #   raise Exception('Unable to sync directories to s3: {}'.format(e))
+  try:
+    subprocess.run(
+      'aws s3 sync {} s3://sparkify-load/'.format(parquet_file_path), shell=True, check=True
+    )
+  except Exception as e:
+    raise Exception('Unable to sync directories to s3: {}'.format(e))
 
   spark.stop()
 
